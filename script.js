@@ -91,10 +91,11 @@ function updateNotifications() {
 /* ==================== 4. ĐĂNG NHẬP & ĐĂNG KÝ (CÓ SĐT) ==================== */
 function handleLogin(event) {
     event.preventDefault();
+    // Lấy dữ liệu người dùng nhập (có thể là Email hoặc SĐT)
     const loginInput = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
     
-    // Tìm kiếm bằng Email HOẶC Số điện thoại
+    // TÌM KIẾM THÔNG MINH: So sánh trùng Email HOẶC trùng SĐT
     const user = users.find(u => u && (u.email === loginInput || u.phone === loginInput) && u.pass === password);
     
     if (user) {
@@ -109,7 +110,6 @@ function handleLogin(event) {
         showSection((user.role === 'Admin') ? 'admin-dashboard' : 'main-store');
     } else showNotification('Email/SĐT hoặc mật khẩu không đúng!', 'error');
 }
-
 function handleSignUp(event) {
     event.preventDefault();
     const name = document.getElementById('reg-name').value.trim();
