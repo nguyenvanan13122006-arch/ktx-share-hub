@@ -43,28 +43,24 @@ body { background: var(--dark); min-height: 100vh; color: var(--text-white); ove
 .auth-box { 
     background: var(--glass-bg); 
     border: 1px solid var(--glass-border); 
-    border-radius: 24px; 
-    padding: 40px; 
+    border-radius: 28px; 
+    padding: clamp(20px, 5vw, 40px); 
     width: 100%; 
-    max-width: 450px; 
-    margin: 0 auto;
+    max-width: 420px; 
     box-shadow: var(--shadow); 
-    animation: fadeInUp 0.4s ease-out; 
-    position: relative;
     backdrop-filter: blur(12px);
+    animation: authIn 0.6s ease-out;
+    
+    /* 3 DÒNG NÀY LÀ CỨU TINH CHO ĐIỆN THOẠI */
+    max-height: calc(100dvh - 40px); /* Giới hạn chiều cao không vượt quá màn hình */
+    overflow-y: auto; /* Tự động hiện thanh cuộn nếu nội dung quá dài */
+    margin: auto; /* Chống lỗi bị cắt mất phần đỉnh form */
 }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-.auth-logo { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 10px; color: var(--primary); letter-spacing: -0.5px; }
-.auth-subtitle { text-align: center; font-size: 0.9rem; color: var(--text-gray); margin-bottom: 25px; }
-
-.admin-trigger { text-align: center; padding: 12px; background: rgba(255, 107, 43, 0.1); border-radius: 12px; margin-bottom: 20px; cursor: pointer; transition: var(--transition); border: 1px solid rgba(255, 107, 43, 0.2); font-weight: 600; color: var(--primary); }
-.admin-trigger:hover { background: rgba(255, 107, 43, 0.2); }
-
-.auth-tabs { display: flex; margin-bottom: 25px; background: rgba(0, 0, 0, 0.2); border-radius: 14px; padding: 6px; }
-.auth-tabs button { flex: 1; background: none; border: none; padding: 12px; color: var(--text-gray); cursor: pointer; font-weight: 600; border-radius: 10px; transition: var(--transition); width: auto; }
-.auth-tabs button.active { background: var(--glass-bg); color: var(--text-white); box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); }
-
+/* Thêm đoạn này ngay bên dưới để thanh cuộn bên trong hộp nhìn nhỏ gọn, tinh tế hơn */
+.auth-box::-webkit-scrollbar { width: 4px; }
+.auth-box::-webkit-scrollbar-track { background: transparent; }
+.auth-box::-webkit-scrollbar-thumb { background: rgba(255, 107, 43, 0.6); border-radius: 10px; }
 /* Form Inputs & Buttons */
 .input-group { position: relative; margin-bottom: 20px; }
 .input-group i { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--primary); }
