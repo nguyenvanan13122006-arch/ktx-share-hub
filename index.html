@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KTX Share Hub - Cho thuê đồ sinh viên</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-screen" class="full-page">
+        <div class="auth-box">
+            <div class="auth-logo">🤝 KTX SHARE HUB</div>
+            <p class="auth-subtitle">Nền tảng chia sẻ & cho thuê đồ dùng nội bộ KTX</p>
+
+            <div id="admin-access-trigger" class="admin-trigger" onclick="showAdminForm()">
+                <i class="fa fa-shield-halved"></i> <small>Truy cập Admin / Kiểm duyệt</small>
+            </div>
+
+            <div id="user-tabs" class="auth-tabs">
+                <button id="tab-login" class="active" onclick="switchTab('login')"><i class="fa fa-sign-in-alt"></i> Đăng nhập</button>
+                <button id="tab-signup" onclick="switchTab('signup')"><i class="fa fa-user-plus"></i> Đăng ký</button>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="input-group"><i class="fa fa-envelope"></i><input type="email" id="reg-email" placeholder="Email sinh viên (email.edu.vn)" required></div>
+                <div class="input-group"><i class="fa fa-lock"></i><input type="password" id="login-password" placeholder="Mật khẩu" required></div>
+                <button type="submit" class="btn-primary-long"><i class="fa fa-sign-in-alt"></i> Vào KTX Hub</button>
+            </form>
+
+            <form id="signup-form" style="display: none;" onsubmit="handleSignUp(event)">
+                <div class="input-group"><i class="fa fa-user"></i><input type="text" id="reg-name" placeholder="Họ tên đầy đủ" required></div>
+                <div class="input-group"><i class="fa fa-id-card"></i><input type="text" id="reg-mssv" placeholder="Mã số sinh viên" required></div>
+                <div class="input-group"><i class="fa fa-door-open"></i><input type="text" id="reg-room" placeholder="Phòng KTX (VD: I1-102)" required></div>
+                <div class="input-group"><i class="fa fa-envelope"></i><input type="email" id="reg-email" placeholder="Email sinh viên" required></div>
+                <div class="input-group"><i class="fa fa-lock"></i><input type="password" id="reg-pass" placeholder="Mật khẩu" required minlength="6"></div>
+                <button type="submit" class="btn-primary-long"><i class="fa fa-check-circle"></i> Đăng ký tài khoản</button>
+            </form>
+
+            <div id="admin-form-container" style="display: none;">
+                <h3 class="admin-title"><i class="fa fa-lock"></i> BAN QUẢN LÝ KTX</h3>
+                <form onsubmit="handleAdminLogin(event)">
+                    <div class="input-group"><i class="fa fa-user-shield"></i><input type="email" id="admin-email" placeholder="Email Admin" required></div>
+                    <div class="input-group"><i class="fa fa-key"></i><input type="password" id="admin-pass" placeholder="Mã xác minh" required></div>
+                    <button type="submit" class="btn-primary-long btn-admin"><i class="fa fa-check"></i> Xác minh</button>
+                </form>
+                <p class="back-link" onclick="backToUserLogin()"><i class="fa fa-arrow-left"></i> Quay lại đăng nhập sinh viên</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-content" style="display: none;">
+        <header>
+            <div class="logo" onclick="showSection('main-store')"><i class="fa fa-handshake"></i> KTX Hub</div>
+            <div class="search-bar">
+                <input type="text" id="txtSearch" placeholder="Tìm đồ cần thuê (nồi lẩu, máy sấy, sách)...">
+                <button onclick="searchProducts()"><i class="fa fa-search"></i></button>
+            </div>
+            <div class="user-actions">
+                <button class="btn-nav" onclick="showSection('main-store')"><i class="fa fa-home"></i> Trang chủ</button>
+                <button id="nav-my-orders" onclick="showSection('my-orders')" class="btn-nav" style="display:none;"><i class="fa fa-history"></i> Đơn thuê của tôi</button>
+                <button id="nav-seller" onclick="showSection('seller-dashboard')" class="btn-nav" style="display:none;"><i class="fa fa-upload"></i> Cho thuê đồ</button>
+                <button id="nav-admin" onclick="showSection('admin-dashboard')" class="btn-nav btn-admin-nav" style="display:none;"><i class="fa fa-shield-alt"></i> Quản lý</button>
+                <div id="product-detail-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box" style="max-width: 450px; padding: 30px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;"><i class="fa fa-info-circle"></i> CHI TIẾT BÀI ĐĂNG</h3>
+                <button onclick="document.getElementById('product-detail-modal').style.display='none'" style="background:none; border:none; color:var(--text-gray); font-size:1.2rem; cursor:pointer;"><i class="fa fa-times"></i></button>
+            </div>
+            <div id="product-detail-content">
+                </div>
+        </div>
+    </div>
+                <div class="notification-bell" onclick="toggleNotify()" style="position:relative; cursor:pointer; margin-right:15px; display:inline-flex; align-items:center;">
+                    <i class="fa fa-bell" style="font-size:1.3rem; color:var(--text-gray);"></i>
+                    <span id="notify-count" style="position:absolute; top:-5px; right:-5px; background:#ef4444; color:white; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold; display:none;">0</span>
+                    <div id="notify-dropdown" class="notify-dropdown" style="display:none; position:absolute; top:35px; right:0; width:280px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:12px; box-shadow:var(--shadow); z-index:1000; text-align:left;">
+                        <div style="padding:12px; border-bottom:1px solid var(--glass-border); font-weight:bold; font-size:0.9rem; color:white;">Thông báo đơn hàng</div>
+                        <div id="notify-list" style="max-height:300px; overflow-y:auto;">
+                            <p style="padding:15px; font-size:0.8rem; color:var(--text-gray); text-align:center;">Không có thông báo mới</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="cart-btn" onclick="showSection('cart-page')">
+                    <i class="fa fa-clipboard-list"></i> <span id="cart-count">0</span>
+                </button>
+                <div class="user-info" id="user-display" style="display: none;">
+                    <span id="user-name">User</span>
+                    <button class="btn-logout" onclick="handleLogout()" title="Đăng xuất"><i class="fa fa-sign-out-alt"></i></button>
+                </div>
+                <button id="nav-login" class="btn-primary" style="margin-bottom: 0; padding: 10px 20px;" onclick="goToLogin()"><i class="fa fa-user"></i> Đăng nhập</button>
+            </div>
+        </header>
+
+        <main>
+            <section id="main-store" class="section active-section" style="display: block;">
+                <div class="ads-container">
+                    <div class="modern-banner" style="flex: 2;">
+                        <div class="banner-content">
+                            <h2>Góc Chia Sẻ KTX </h2>
+                            <p>Thuê đồ dùng tiện lợi, an toàn, tiết kiệm cho sinh viên</p>
+                            
+                        </div>
+                    </div>
+                    <div class="side-banner" style="flex: 1;">
+                        <h4><i class="fa fa-bullhorn"></i> Dịch vụ KTX</h4>
+                        <div class="ad-item">🍲 Quán cơm Cô Ba - Giảm 5k cho SV</div>
+                        <div class="ad-item">👕 Tiệm giặt ủi Tòa B - Nhận đồ tận phòng</div>
+                    </div>
+                </div>
+
+                <div class="category-filters">
+                    <button class="cat-btn active" onclick="filterCategory('All', this)">🌟 Tất cả</button>
+                    <button class="cat-btn" onclick="filterCategory('Gia dụng', this)">🍲 Đồ gia dụng</button>
+                    <button class="cat-btn" onclick="filterCategory('Học tập', this)">📚 Đồ dùng học tập</button>
+                    <button class="cat-btn" onclick="filterCategory('Giải trí', this)">🎸 Giải trí & Thể thao</button>
+                </div>
+
+                <div id="product-list" class="product-grid"></div>
+            </section>
+
+            <section id="cart-page" class="section" style="display: none;">
+                <div class="section-header"><h2><i class="fa fa-clipboard-check"></i> Yêu cầu thuê đồ của bạn</h2></div>
+                <div id="cart-items" class="cart-container"></div>
+                <div id="cart-empty" class="empty-state" style="display: none;"><i class="fa fa-box-open"></i><p>Bạn chưa chọn đồ nào để thuê</p></div>
+            </section>
+
+            <section id="my-orders" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fa fa-history"></i> Đồ bạn đang thuê</h2>
+                    <p>Nhớ trả đồ đúng hạn để giữ uy tín tài khoản nhé!</p>
+                </div>
+                <div id="my-orders-list" class="cart-container"></div>
+            </section>
+
+            <section id="seller-dashboard" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fa fa-box"></i> Quản lý đồ cho thuê của bạn</h2>
+                    <p>Đăng đồ không dùng đến để kiếm thêm thu nhập!</p>
+                </div>
+                <div class="seller-panel">
+                    <button class="btn-primary" onclick="openProductModal()"><i class="fa fa-plus-circle"></i> Đăng tin cho thuê</button>
+                    <div id="seller-product-list" class="product-grid"></div>
+                </div>
+            </section>
+
+            <section id="admin-dashboard" class="section" style="display: none;">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2><i class="fa fa-shield-alt"></i> Ban Quản Lý KTX Share Hub</h2>
+                    <button class="btn-primary" style="background:#10b981; margin-bottom:0;" onclick="exportRevenueReport()"><i class="fa fa-file-excel"></i> Xuất Báo Cáo Kế Toán</button>
+                </div>
+                
+                <div class="admin-stats">
+                    <div class="stat-card"><i class="fa fa-users"></i><span id="admin-users">0</span><p>SV Đăng ký</p></div>
+                    <div class="stat-card"><i class="fa fa-file-signature"></i><span id="admin-products">0</span><p>Bài đăng</p></div>
+                    <div class="stat-card"><i class="fa fa-handshake"></i><span id="admin-orders">0</span><p>Giao dịch thuê</p></div>
+                    <div class="stat-card"><i class="fa fa-coins"></i><span id="admin-revenue">0₫</span><p>Doanh thu Sàn</p></div>
+                </div>
+                
+                <div class="admin-tabs">
+                    <button class="admin-tab-btn active" onclick="switchAdminTab('pending-tab')"><i class="fa fa-clock"></i> Duyệt bài</button>
+                    <button class="admin-tab-btn" onclick="switchAdminTab('orders-tab')"><i class="fa fa-exchange-alt"></i> Giao dịch</button>
+                    <button class="admin-tab-btn" onclick="switchAdminTab('users-tab')"><i class="fa fa-users"></i> Sinh viên</button>
+                    <button class="admin-tab-btn" onclick="switchAdminTab('reports-tab')"><i class="fa fa-flag"></i> Báo cáo vi phạm</button>
+                </div>
+                
+                <div class="admin-tables-container">
+                    <div id="pending-tab" class="admin-tab-content active">
+                        <div id="pending-tab" class="admin-tab-content active">
+                        <h3 style="color: white; margin-bottom: 15px; font-size: 1.1rem;"><i class="fa fa-clock"></i> Bài đang chờ duyệt</h3>
+                        <div class="admin-table-section" style="margin-bottom: 30px;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Người đăng</th>
+                                        <th>Hình ảnh</th>
+                                        <th>Tên đồ vật</th>
+                                        <th>Giá thuê</th>
+                                        <th>Tiền cọc</th>
+                                        <th>Gói Ghim</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-pending-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <h3 style="color: white; margin-bottom: 15px; font-size: 1.1rem;"><i class="fa fa-history"></i> Lịch sử kiểm duyệt</h3>
+                        <div class="admin-table-section">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Người đăng</th>
+                                        <th>Hình ảnh</th>
+                                        <th>Tên đồ vật</th>
+                                        <th>Giá thuê</th>
+                                        <th>Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-history-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                        
+                    </div>
+                    <div id="orders-tab" class="admin-tab-content">
+                        <div class="admin-table-section">
+                            <table class="admin-table">
+                                <thead><tr><th>Mã GD</th><th>Người thuê</th><th>Sản phẩm</th><th>Tổng cọc</th><th>Hoa hồng(10%)</th><th>Trạng thái</th></tr></thead>
+                                <tbody id="admin-orders-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="users-tab" class="admin-tab-content">
+                        <div class="admin-table-section">
+                            <table class="admin-table">
+                                <thead><tr><th>MSSV</th><th>Thông tin</th><th>Phòng</th><th>Lịch sử</th><th>Uy tín</th><th>Khóa</th></tr></thead>
+                                <tbody id="admin-users-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="reports-tab" class="admin-tab-content">
+                        <div class="admin-table-section">
+                            <table class="admin-table">
+                                <thead><tr><th>Ngày</th><th>Người gửi</th><th>Sản phẩm ID</th><th>Lý do vi phạm</th><th>Trạng thái</th></tr></thead>
+                                <tbody id="admin-reports-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="product-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box">
+            <h3 class="admin-title">📝 ĐĂNG TIN CHO THUÊ</h3>
+            <form id="product-form" onsubmit="handleSaveProduct(event)">
+                
+                <div class="input-group">
+                    <i class="fa fa-tag"></i>
+                    <input type="text" id="p-name" placeholder="Tên đồ vật (VD: Nồi lẩu Bear)" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fa fa-list"></i>
+                    <select id="p-category" required>
+                        <option value="" disabled selected>-- Chọn Danh Mục --</option>
+                        <option value="Gia dụng">🍲 Đồ gia dụng</option>
+                        <option value="Học tập">📚 Đồ dùng học tập</option>
+                        <option value="Giải trí">🎮 Giải trí & Khác</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <i class="fa fa-image"></i>
+                    <input type="text" id="p-image" placeholder="Dán link ảnh (URL)..." onchange="previewImage(this.value)" required>
+                </div>
+
+                <div id="image-preview-container" style="display:none; margin-bottom: 15px; text-align: center;">
+                    <img id="image-preview" src="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px; border: 2px solid var(--primary);">
+                </div>
+
+                <div class="input-group">
+                    <i class="fa fa-dollar-sign"></i>
+                    <input type="number" id="p-rent" placeholder="Giá thuê/ngày (VNĐ)..." required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fa fa-shield-alt"></i>
+                    <input type="number" id="p-deposit" placeholder="Tiền đặt cọc (VNĐ)..." required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fa fa-bullhorn"></i>
+                    <select id="p-pin">
+                        <option value="0">Gói thường (Miễn phí)</option>
+                        <option value="5000">Ghim bài 24h (5.000đ)</option>
+                        <option value="10000">Ghim bài 3 ngày (10.000đ)</option>
+                    </select>
+                </div>
+
+                <p style="font-size:0.8rem; color:var(--text-gray); margin-bottom:15px;">*Bài sẽ được Admin kiểm duyệt để tránh lừa đảo.</p>
+                
+                <button type="submit" class="btn-primary-long">XÁC NHẬN ĐĂNG TIN</button>
+                <p class="back-link" onclick="closeProductModal()">Hủy bỏ và quay lại</p>
+                
+            </form>
+        </div>
+    </div>
+
+    <div id="review-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box">
+            <h3 class="admin-title"><i class="fa fa-star"></i> ĐÁNH GIÁ CỦA BẠN</h3>
+            <div id="review-product-info" style="text-align: center; margin-bottom: 15px;"></div>
+            <form id="review-form" onsubmit="submitReview(event)">
+                <input type="hidden" id="review-product-id">
+                <div class="input-group">
+                    <i class="fa fa-star" style="color: #ffb400;"></i>
+                    <select id="review-rating" required>
+                        <option value="5">⭐⭐⭐⭐⭐ - Rất tốt, đúng mô tả</option>
+                        <option value="4">⭐⭐⭐⭐ - Khá tốt</option>
+                        <option value="3">⭐⭐⭐ - Chấp nhận được</option>
+                        <option value="2">⭐⭐ - Đồ cũ/Lỗi nhẹ</option>
+                        <option value="1">⭐ - Rất tệ/Trễ hẹn</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fa fa-comment"></i>
+                    <input type="text" id="review-comment" placeholder="Nhận xét về chủ đồ..." required>
+                </div>
+                <button type="submit" class="btn-primary-long">Gửi đánh giá</button>
+                <p class="back-link" onclick="document.getElementById('review-modal').style.display='none'">Đóng</p>
+            </form>
+            <div id="review-list" class="review-scroll"></div>
+        </div>
+    </div>
+
+    <div id="report-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box">
+            <h3 style="color:#ff4d4d; text-align:center; margin-bottom:20px;"><i class="fa fa-flag"></i> BÁO CÁO VI PHẠM</h3>
+            <form onsubmit="submitReport(event)">
+                <input type="hidden" id="report-product-id">
+                <div class="input-group">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    <select id="report-reason" required>
+                        <option value="Sản phẩm không đúng thực tế">Sản phẩm không đúng thực tế</option>
+                        <option value="Nghi ngờ lừa đảo/Chiếm đoạt cọc">Nghi ngờ lừa đảo/Chiếm đoạt cọc</option>
+                        <option value="Người cho thuê thái độ kém">Người cho thuê thái độ kém</option>
+                        <option value="Mất đồ/Hỏng đồ không đền">Mất đồ/Hỏng đồ không đền bù</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fa fa-pen"></i>
+                    <input type="text" id="report-detail" placeholder="Mô tả chi tiết sự việc..." required>
+                </div>
+                <button type="submit" class="btn-primary-long" style="background:#ff4d4d;">Gửi Báo Cáo Cho Admin</button>
+                <p class="back-link" onclick="document.getElementById('report-modal').style.display='none'">Hủy bỏ</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="chat-widget" class="chat-widget" style="display:none;">
+        <div class="chat-header">
+            <span id="chat-target-name"><i class="fa fa-comments"></i> Chat</span>
+            <button onclick="document.getElementById('chat-widget').style.display='none'"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="sys-msg">Hệ thống: Chào mừng bạn đến KTX Share Hub. Vui lòng thỏa thuận thời gian giao đồ tại đây!</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Nhập tin nhắn...">
+            <button onclick="sendChatMessage()"><i class="fa fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <div id="notification-container"></div>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
