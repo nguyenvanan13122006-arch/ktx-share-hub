@@ -16,7 +16,7 @@ const database = firebase.database();
 let users = []; let products = []; let orders = []; let cart = []; let reports = [];
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null; 
 let orderIdCounter = 1000;
-let currentReviewOrderId = null; // Quản lý khóa đánh giá
+let currentReviewOrderId = null;
 
 function parseFirebaseData(data) {
     if (!data) return [];
@@ -51,9 +51,8 @@ database.ref('orders').on('value', snapshot => {
     if (document.getElementById('my-orders').style.display === 'block') renderMyOrders();
     if (document.getElementById('seller-dashboard').style.display === 'block') renderSellerDashboard();
     
-    // Cập nhật chuông thông báo
     updateNotifications();
-    renderShop(); // Cập nhật lại cửa hàng để check khóa đồ
+    renderShop();
 });
 
 database.ref('reports').on('value', snapshot => {
@@ -89,12 +88,15 @@ function updateNotifications() {
     }
 }
 
-/* ==================== 4. ĐĂNG NHẬP & ĐĂNG KÝ ==================== */
+/* ==================== 4. ĐĂNG NHẬP & ĐĂNG KÝ (CÓ SĐT) ==================== */
 function handleLogin(event) {
     event.preventDefault();
-    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const loginInput = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
-    const user = users.find(u => u && u.email === email && u.pass === password);
+    
+    // Tìm kiếm bằng Email HOẶC Số điện thoại
+    const user = users.find(u => u && (u.email === loginInput || u.phone === loginInput) && u.pass === password);
+    
     if (user) {
         if(user.locked) return showNotification('Tài khoản của bạn đã bị Khóa!', 'error');
         currentUser = user; localStorage.setItem('currentUser', JSON.stringify(user));
@@ -105,20 +107,33 @@ function handleLogin(event) {
         document.getElementById('user-name').textContent = user.name;
         updateNavButtons();
         showSection((user.role === 'Admin') ? 'admin-dashboard' : 'main-store');
-    } else showNotification('Email hoặc mật khẩu không đúng!', 'error');
+    } else showNotification('Email/SĐT hoặc mật khẩu không đúng!', 'error');
 }
 
 function handleSignUp(event) {
     event.preventDefault();
     const name = document.getElementById('reg-name').value.trim();
     const mssv = document.getElementById('reg-mssv').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim();
     const room = document.getElementById('reg-room').value.trim();
     const email = document.getElementById('reg-email').value.trim().toLowerCase();
     const password = document.getElementById('reg-pass').value;
-    if (!email.endsWith('.edu.vn')) return showNotification('Chỉ hỗ trợ sinh viên có email .edu.vn!', 'error');
-    if (users.find(u => u && (u.email === email || u.mssv === mssv))) return showNotification('Email/MSSV đã tồn tại!', 'error');
+
+    // 1. Kiểm tra định dạng SĐT (10 số)
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone)) return showNotification('Số điện thoại phải bao gồm 10 chữ số!', 'error');
+
+    // 2. Kiểm tra email trường DAU
+    if (!email.endsWith('@dau.edu.vn')) {
+        return showNotification('Vui lòng sử dụng email sinh viên Kiến trúc (@dau.edu.vn)!', 'error');
+    }
     
-    users.push({ email, pass: password, name, role: 'Student', mssv, room, rating: 5.0, locked: false, joinDate: new Date().toLocaleDateString('vi-VN') });
+    // 3. Kiểm tra trùng lặp (Email, MSSV, HOẶC SĐT)
+    if (users.find(u => u && (u.email === email || u.mssv === mssv || u.phone === phone))) {
+        return showNotification('Email, MSSV hoặc Số điện thoại đã tồn tại!', 'error');
+    }
+    
+    users.push({ email, phone, pass: password, name, role: 'Student', mssv, room, rating: 5.0, locked: false, joinDate: new Date().toLocaleDateString('vi-VN') });
     database.ref('users').set(users);
     showNotification('Đăng ký thành công!', 'success');
     switchTab('login'); event.target.reset();
@@ -182,13 +197,12 @@ function searchProducts() {
     renderShop(kw ? products.filter(p => p && p.name.toLowerCase().includes(kw)) : products);
 }
 
-/* ==================== 6. HIỂN THỊ CỬA HÀNG (KIỂM TRA HẾT ĐỒ) ==================== */
+/* ==================== 6. HIỂN THỊ CỬA HÀNG ==================== */
 function renderShop(list = products) {
     const container = document.getElementById('product-list'); if (!container) return;
     let approvedList = list.filter(p => p && p.status === 'approved').sort((a, b) => (b.pinned||0) - (a.pinned||0));
     
     container.innerHTML = approvedList.map(p => {
-        // Kiểm tra xem món đồ có đang trong trạng thái giao dịch khóa không
         const isRenting = orders.some(o => o.items && o.items.some(item => item.id === p.id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt'].includes(o.status));
 
         let displayImg = (p.image && p.image.startsWith('http')) ? `<img src="${p.image}">` : `<span>${p.image || '📦'}</span>`;
@@ -215,7 +229,7 @@ function renderShop(list = products) {
     }).join('');
 }
 
-/* ==================== 7. ĐÁNH GIÁ (RATING) ĐÃ KHÓA ==================== */
+/* ==================== 7. ĐÁNH GIÁ (RATING) ==================== */
 function openReviewModal(id, orderId = null) {
     currentReviewOrderId = orderId;
     const product = products.find(p => p && p.id === id); if (!product) return;
@@ -363,7 +377,17 @@ function renderSellerDashboard() {
         if (myItems.length === 0) pContainer.innerHTML = '<div class="empty-state"><p>Bạn chưa đăng đồ nào.</p></div>';
         else pContainer.innerHTML = myItems.map(p => {
             let displayImg = (p.image && p.image.startsWith('http')) ? `<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">` : `<span style="font-size:3rem;">📦</span>`;
-            return `<div class="product-card" style="border-color:${p.status === 'pending' ? 'orange' : 'var(--glass-border)'}"><div class="product-img">${displayImg}</div><h3>${p.name}</h3><p style="color:var(--primary); font-weight:700;">${formatCurrency(p.rentPrice)}/ngày</p><p style="font-size:0.85rem;">Trạng thái: <b style="color:${p.status === 'pending' ? 'orange' : 'var(--secondary)'}">${p.status === 'pending' ? 'Đang chờ duyệt' : 'Đang cho thuê'}</b></p></div>`;
+            
+            let statusColor = p.status === 'pending' ? 'orange' : (p.status === 'rejected' ? '#ff4d4d' : 'var(--secondary)');
+            let statusText = p.status === 'pending' ? 'Đang chờ duyệt' : (p.status === 'rejected' ? 'Bị từ chối' : 'Đang cho thuê');
+
+            return `<div class="product-card" style="border-color:${statusColor}">
+                <div class="product-img">${displayImg}</div>
+                <h3>${p.name}</h3>
+                <p style="color:var(--primary); font-weight:700;">${formatCurrency(p.rentPrice)}/ngày</p>
+                <p style="font-size:0.85rem; margin-bottom:10px;">Trạng thái: <b style="color:${statusColor}">${statusText}</b></p>
+                <button onclick="openProductDetailModal(${p.id})" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); width:100%; padding:10px; border-radius:8px; color:white; cursor:pointer; font-weight:bold; transition:0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa fa-info-circle"></i> Chi tiết & Xóa</button>
+            </div>`;
         }).join('');
     }
 
@@ -377,11 +401,10 @@ function renderSellerDashboard() {
             else if(o.status === 'Đã duyệt - Chờ nhận đồ') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-handshake"></i> Admin đã duyệt! Hãy giao đồ cho khách.</span>';
             else if(o.status === 'Đang thuê') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-user-check"></i> Khách đang sử dụng đồ của bạn</span>';
             else if(o.status === 'Đã trả đồ - Chờ Admin chốt') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-box"></i> Khách báo đã trả đồ. Chờ Admin chốt sổ!</span>';
-            else if(o.status === 'Hoàn tất') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-check-circle"></i> Giao dịch hoàn tất thành công!</span>';
+            else if(o.status === 'Hoàn tất') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-check-circle"></i> Giao dịch hoàn tất!</span>';
             else if(o.status === 'Đã hủy') actionBtn = '<span style="color:#ff4d4d;">Đơn đã bị hủy</span>';
 
-            return `
-            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid var(--glass-border);">
+            return `<div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid var(--glass-border);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><b style="color:var(--primary);">${o.orderId}</b><span style="color:var(--secondary); font-weight:bold;">${o.status}</span></div>
                 <p><b>Khách hàng:</b> ${o.customerName} (${o.customerEmail})</p><p><b>Sản phẩm:</b> ${o.items.map(i=>i.name).join(', ')}</p>
                 <div style="margin-top:15px;">${actionBtn}</div>
@@ -470,7 +493,7 @@ function renderAdminDashboard() {
     document.getElementById('admin-revenue').textContent = formatCurrency(totalCommision + totalPinFee);
     
     renderPendingTable(); 
-    renderHistoryTable(); // MỚI: Gọi hàm hiển thị lịch sử duyệt
+    renderHistoryTable();
     renderOrderTable(); 
     renderUserTable(); 
     renderReportTable(); 
@@ -482,7 +505,6 @@ function renderPendingTable() {
     if(pending.length === 0) return tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Không có bài chờ duyệt</td></tr>';
     
     tbody.innerHTML = pending.map(p => {
-        // Tạo thẻ hiển thị hình ảnh thu nhỏ
         let displayImg = (p.image && p.image.startsWith('http')) 
             ? `<img src="${p.image}" style="width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--glass-border);">` 
             : `<span style="font-size:2rem;">📦</span>`;
@@ -502,15 +524,13 @@ function renderPendingTable() {
     }).join('');
 }
 
-// MỚI: Hàm hiển thị Lịch sử kiểm duyệt
 function renderHistoryTable() {
     const tbody = document.getElementById('admin-history-table-body');
-    // Lọc ra các bài đã duyệt (approved) hoặc đã bị từ chối (rejected)
+    if (!tbody) return;
+    
     let history = products.filter(p => p && (p.status === 'approved' || p.status === 'rejected'));
+    if(history.length === 0) return tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Chưa có lịch sử kiểm duyệt</td></tr>';
     
-    if(history.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Chưa có lịch sử kiểm duyệt</td></tr>';
-    
-    // Sắp xếp bài mới duyệt lên đầu
     tbody.innerHTML = history.sort((a,b)=>b.id-a.id).map(p => {
         let displayImg = (p.image && p.image.startsWith('http')) 
             ? `<img src="${p.image}" style="width:50px; height:50px; object-fit:cover; border-radius:8px;">` 
@@ -526,6 +546,9 @@ function renderHistoryTable() {
             <td style="font-weight:bold;">${p.name}</td>
             <td style="color:var(--primary);">${formatCurrency(p.rentPrice)}</td>
             <td>${statusBadge}</td>
+            <td>
+                <button onclick="openProductDetailModal(${p.id})" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); padding:6px 12px; border-radius:6px; color:white; cursor:pointer; font-weight:bold; transition:0.3s;" onmouseover="this.style.background='var(--primary)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa fa-eye"></i> Chi tiết</button>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -539,7 +562,6 @@ window.approvePost = function(id) {
     }
 }
 
-// MỚI: Đổi trạng thái thành rejected thay vì xóa hẳn khỏi database
 window.rejectPost = function(id) { 
     let p = products.find(x=>x && x.id===id);
     if(p) {
@@ -548,6 +570,7 @@ window.rejectPost = function(id) {
         showNotification('Đã từ chối bài đăng!', 'error'); 
     }
 }
+
 function renderOrderTable() {
     const tbody = document.getElementById('admin-orders-table-body');
     if (orders.length === 0) return tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có giao dịch</td></tr>';
@@ -609,85 +632,8 @@ function exportRevenueReport() {
 /* ==================== 13. TIỆN ÍCH & KHỞI CHẠY ==================== */
 function showNotification(msg, type = 'info') { const c = document.getElementById('notification-container'); const n = document.createElement('div'); n.className = `notification ${type}`; n.innerHTML = `<span style="flex:1;">${msg}</span><button onclick="this.parentElement.remove()" style="background:none;border:none;color:white;cursor:pointer;"><i class="fa fa-times"></i></button>`; c.appendChild(n); setTimeout(() => n.remove(), 4000); }
 function formatCurrency(amt) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amt || 0); }
-/* ==================== TÍNH NĂNG XEM CHI TIẾT VÀ XÓA BÀI ĐĂNG ==================== */
 
-// 1. Cập nhật lại Lịch sử duyệt bài của Admin (Thêm nút Xem chi tiết)
-function renderHistoryTable() {
-    const tbody = document.getElementById('admin-history-table-body');
-    if (!tbody) return;
-    
-    let history = products.filter(p => p && (p.status === 'approved' || p.status === 'rejected'));
-    if(history.length === 0) return tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Chưa có lịch sử kiểm duyệt</td></tr>';
-    
-    tbody.innerHTML = history.sort((a,b)=>b.id-a.id).map(p => {
-        let displayImg = (p.image && p.image.startsWith('http')) 
-            ? `<img src="${p.image}" style="width:50px; height:50px; object-fit:cover; border-radius:8px;">` 
-            : `<span style="font-size:1.5rem;">📦</span>`;
-            
-        let statusBadge = p.status === 'approved' 
-            ? `<span style="color:var(--secondary); font-weight:bold;"><i class="fa fa-check-circle"></i> Đã duyệt</span>` 
-            : `<span style="color:#ff4d4d; font-weight:bold;"><i class="fa fa-times-circle"></i> Bị từ chối</span>`;
-
-        return `<tr>
-            <td>${users.find(u=>u && u.email===p.sellerEmail)?.name || 'Ẩn danh'}</td>
-            <td>${displayImg}</td>
-            <td style="font-weight:bold;">${p.name}</td>
-            <td style="color:var(--primary);">${formatCurrency(p.rentPrice)}</td>
-            <td>${statusBadge}</td>
-            <td>
-                <button onclick="openProductDetailModal(${p.id})" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); padding:6px 12px; border-radius:6px; color:white; cursor:pointer; font-weight:bold; transition:0.3s;" onmouseover="this.style.background='var(--primary)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa fa-eye"></i> Chi tiết</button>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-// 2. Cập nhật bảng Sinh viên Quản lý đồ (Thêm nút Xem chi tiết / Xóa)
-function renderSellerDashboard() {
-    const pContainer = document.getElementById('seller-product-list');
-    if (pContainer) {
-        let myItems = products.filter(p => p && p.sellerEmail === currentUser.email);
-        if (myItems.length === 0) pContainer.innerHTML = '<div class="empty-state"><p>Bạn chưa đăng đồ nào.</p></div>';
-        else pContainer.innerHTML = myItems.map(p => {
-            let displayImg = (p.image && p.image.startsWith('http')) ? `<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">` : `<span style="font-size:3rem;">📦</span>`;
-            
-            // Xử lý màu sắc trạng thái
-            let statusColor = p.status === 'pending' ? 'orange' : (p.status === 'rejected' ? '#ff4d4d' : 'var(--secondary)');
-            let statusText = p.status === 'pending' ? 'Đang chờ duyệt' : (p.status === 'rejected' ? 'Bị từ chối' : 'Đang cho thuê');
-
-            return `<div class="product-card" style="border-color:${statusColor}">
-                <div class="product-img">${displayImg}</div>
-                <h3>${p.name}</h3>
-                <p style="color:var(--primary); font-weight:700;">${formatCurrency(p.rentPrice)}/ngày</p>
-                <p style="font-size:0.85rem; margin-bottom:10px;">Trạng thái: <b style="color:${statusColor}">${statusText}</b></p>
-                <button onclick="openProductDetailModal(${p.id})" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); width:100%; padding:10px; border-radius:8px; color:white; cursor:pointer; font-weight:bold; transition:0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa fa-info-circle"></i> Chi tiết & Xóa</button>
-            </div>`;
-        }).join('');
-    }
-
-    // Phần render đơn hàng của Seller (Giữ nguyên logic cũ)
-    const oContainer = document.getElementById('seller-orders-list');
-    if(oContainer) {
-        let incomingOrders = orders.filter(o => o && o.sellerEmail === currentUser.email).sort((a,b)=>b.orderDateRaw-a.orderDateRaw);
-        if(incomingOrders.length === 0) oContainer.innerHTML = '<p style="color:var(--text-gray);">Chưa có ai thuê đồ của bạn.</p>';
-        else oContainer.innerHTML = incomingOrders.map(o => {
-            let actionBtn = '';
-            if(o.status === 'Chờ Admin duyệt') actionBtn = '<span style="color:var(--text-gray)"><i class="fa fa-clock"></i> Đang chờ Admin duyệt đơn...</span>';
-            else if(o.status === 'Đã duyệt - Chờ nhận đồ') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-handshake"></i> Admin đã duyệt! Hãy giao đồ cho khách.</span>';
-            else if(o.status === 'Đang thuê') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-user-check"></i> Khách đang sử dụng đồ của bạn</span>';
-            else if(o.status === 'Đã trả đồ - Chờ Admin chốt') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-box"></i> Khách báo đã trả đồ. Chờ Admin chốt sổ!</span>';
-            else if(o.status === 'Hoàn tất') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-check-circle"></i> Giao dịch hoàn tất!</span>';
-            else if(o.status === 'Đã hủy') actionBtn = '<span style="color:#ff4d4d;">Đơn đã bị hủy</span>';
-
-            return `<div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid var(--glass-border);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><b style="color:var(--primary);">${o.orderId}</b><span style="color:var(--secondary); font-weight:bold;">${o.status}</span></div>
-                <p><b>Khách hàng:</b> ${o.customerName} (${o.customerEmail})</p><p><b>Sản phẩm:</b> ${o.items.map(i=>i.name).join(', ')}</p>
-                <div style="margin-top:15px;">${actionBtn}</div>
-            </div>`;
-        }).join('');
-    }
-}
-
-// 3. Hàm mở Cửa sổ Chi tiết
+/* ==================== XEM CHI TIẾT & XÓA BÀI ==================== */
 window.openProductDetailModal = function(id) {
     const p = products.find(x => x && x.id === id);
     if(!p) return;
@@ -716,31 +662,21 @@ window.openProductDetailModal = function(id) {
     document.getElementById('product-detail-modal').style.display = 'flex';
 }
 
-// 4. Hàm Xử lý Xóa vĩnh viễn
 window.deleteProduct = function(id) {
     if(confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn bài đăng này không? Hành động này không thể hoàn tác!')) {
-        // KIỂM TRA AN TOÀN: Đồ có đang bị thuê không?
         const isRenting = orders.some(o => o.items && o.items.some(item => item.id === id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt'].includes(o.status));
-        if (isRenting) {
-            return showNotification('KHÔNG THỂ XÓA! Món đồ này đang trong quá trình giao dịch thuê với khách hàng.', 'error');
-        }
+        if (isRenting) return showNotification('KHÔNG THỂ XÓA! Món đồ này đang giao dịch thuê.', 'error');
 
-        // Thực hiện xóa khỏi mảng và lưu lên Cloud
         products = products.filter(p => p && p.id !== id);
         database.ref('products').set(products);
-        
         showNotification('Đã xóa bài đăng thành công!', 'success');
         document.getElementById('product-detail-modal').style.display = 'none';
         
-        // Render lại giao diện tùy theo ai đang bấm xóa
-        if (document.getElementById('admin-dashboard').style.display === 'block') {
-            renderHistoryTable();
-            renderAdminDashboard();
-        } else {
-            renderSellerDashboard();
-        }
+        if (document.getElementById('admin-dashboard').style.display === 'block') { renderHistoryTable(); renderAdminDashboard(); } 
+        else { renderSellerDashboard(); }
     }
 }
+
 window.onload = function() {
     if (currentUser) {
         document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-content').style.display = 'block'; 
