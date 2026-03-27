@@ -119,24 +119,37 @@ function handleSignUp(event) {
     const email = document.getElementById('reg-email').value.trim().toLowerCase();
     const password = document.getElementById('reg-pass').value;
 
-    // 1. Kiểm tra định dạng SĐT (10 số)
+    // 1. Kiểm tra SĐT và Email
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(phone)) return showNotification('Số điện thoại phải bao gồm 10 chữ số!', 'error');
-
-    // 2. Kiểm tra email trường DAU
     if (!email.endsWith('@dau.edu.vn')) {
         return showNotification('Vui lòng sử dụng email sinh viên Kiến trúc (@dau.edu.vn)!', 'error');
     }
     
-    // 3. Kiểm tra trùng lặp (Email, MSSV, HOẶC SĐT)
+    // 2. Kiểm tra trùng lặp
     if (users.find(u => u && (u.email === email || u.mssv === mssv || u.phone === phone))) {
         return showNotification('Email, MSSV hoặc Số điện thoại đã tồn tại!', 'error');
     }
     
-    users.push({ email, phone, pass: password, name, role: 'Student', mssv, room, rating: 5.0, locked: false, joinDate: new Date().toLocaleDateString('vi-VN') });
-    database.ref('users').set(users);
-    showNotification('Đăng ký thành công!', 'success');
-    switchTab('login'); event.target.reset();
+    // 3. Đóng gói dữ liệu người dùng mới
+    const newUser = { 
+        email, phone, pass: password, name, role: 'Student', mssv, room, 
+        rating: 5.0, locked: false, joinDate: new Date().toLocaleDateString('vi-VN') 
+    };
+
+    // 4. Gửi lên Firebase và BẮT BUỘC CHỜ XÁC NHẬN
+    database.ref('users').set([...users, newUser])
+        .then(() => {
+            // Mây xác nhận lưu thành công mới chạy đoạn này
+            showNotification('Đăng ký thành công! 🎉', 'success');
+            switchTab('login'); 
+            event.target.reset();
+        })
+        .catch((error) => {
+            // Nếu mây từ chối (bị lỗi), sẽ báo đỏ cho bạn biết
+            showNotification('Lỗi máy chủ Firebase: ' + error.message, 'error');
+            console.error("Chi tiết lỗi Firebase:", error);
+        });
 }
 
 function handleAdminLogin(event) {
