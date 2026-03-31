@@ -91,11 +91,9 @@ function updateNotifications() {
 /* ==================== 4. ĐĂNG NHẬP & ĐĂNG KÝ (CÓ SĐT) ==================== */
 function handleLogin(event) {
     event.preventDefault();
-    // Lấy dữ liệu người dùng nhập (có thể là Email hoặc SĐT)
     const loginInput = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
     
-    // TÌM KIẾM THÔNG MINH: So sánh trùng Email HOẶC trùng SĐT
     const user = users.find(u => u && (u.email === loginInput || u.phone === loginInput) && u.pass === password);
     
     if (user) {
@@ -119,34 +117,29 @@ function handleSignUp(event) {
     const email = document.getElementById('reg-email').value.trim().toLowerCase();
     const password = document.getElementById('reg-pass').value;
 
-    // 1. Kiểm tra SĐT và Email
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(phone)) return showNotification('Số điện thoại phải bao gồm 10 chữ số!', 'error');
-    if (!email.endsWith('@dau.edu.vn')) {
-        return showNotification('Vui lòng sử dụng email sinh viên Kiến trúc (@dau.edu.vn)!', 'error');
+    // Kiểm tra đuôi email phải là .edu.vn (dành cho mọi trường Đại học/Cao đẳng)
+    if (!email.endsWith('.edu.vn')) {
+        return showNotification('Vui lòng sử dụng email sinh viên (có đuôi .edu.vn)!', 'error');
     }
     
-    // 2. Kiểm tra trùng lặp
     if (users.find(u => u && (u.email === email || u.mssv === mssv || u.phone === phone))) {
         return showNotification('Email, MSSV hoặc Số điện thoại đã tồn tại!', 'error');
     }
     
-    // 3. Đóng gói dữ liệu người dùng mới
     const newUser = { 
         email, phone, pass: password, name, role: 'Student', mssv, room, 
         rating: 5.0, locked: false, joinDate: new Date().toLocaleDateString('vi-VN') 
     };
 
-    // 4. Gửi lên Firebase và BẮT BUỘC CHỜ XÁC NHẬN
     database.ref('users').set([...users, newUser])
         .then(() => {
-            // Mây xác nhận lưu thành công mới chạy đoạn này
             showNotification('Đăng ký thành công! 🎉', 'success');
             switchTab('login'); 
             event.target.reset();
         })
         .catch((error) => {
-            // Nếu mây từ chối (bị lỗi), sẽ báo đỏ cho bạn biết
             showNotification('Lỗi máy chủ Firebase: ' + error.message, 'error');
             console.error("Chi tiết lỗi Firebase:", error);
         });
@@ -216,7 +209,7 @@ function renderShop(list = products) {
     let approvedList = list.filter(p => p && p.status === 'approved').sort((a, b) => (b.pinned||0) - (a.pinned||0));
     
     container.innerHTML = approvedList.map(p => {
-        const isRenting = orders.some(o => o.items && o.items.some(item => item.id === p.id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt'].includes(o.status));
+        const isRenting = orders.some(o => o.items && o.items.some(item => item.id === p.id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt', 'Đã thanh toán - Chờ duyệt'].includes(o.status));
 
         let displayImg = (p.image && p.image.startsWith('http')) ? `<img src="${p.image}">` : `<span>${p.image || '📦'}</span>`;
         let stars = '⭐'.repeat(Math.round(p.rating || 5)); let rCount = p.reviews ? p.reviews.length : 0;
@@ -282,7 +275,7 @@ function submitReview(e) {
     document.getElementById('review-modal').style.display = 'none'; document.getElementById('review-comment').value = '';
 }
 
-/* ==================== 8. GIỎ HÀNG & THANH TOÁN ==================== */
+/* ==================== 8. GIỎ HÀNG & THANH TOÁN QR ==================== */
 function renderCart() {
     const container = document.getElementById('cart-items'), empty = document.getElementById('cart-empty');
     if (!container) return;
@@ -296,7 +289,7 @@ function renderCart() {
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:15px;border-bottom:1px solid var(--glass-border);"><div style="display:flex;align-items:center;gap:15px;">${displayImg}<div><h4>${item.name}</h4><p style="font-size:0.85rem; color:var(--text-gray);">Giá: ${formatCurrency(item.rentPrice)} | Cọc: ${formatCurrency(item.deposit)}</p></div></div><button onclick="removeFromCart(${i})" style="background:rgba(255,77,77,0.2);border:none;padding:8px 12px;border-radius:8px;color:#ff4d4d;cursor:pointer;"><i class="fa fa-trash"></i></button></div>`;
     }).join('');
     
-    container.innerHTML += `<div style="margin-top:20px;padding-top:20px;border-top:2px solid var(--glass-border);text-align:right;"><h4 style="color:var(--text-gray);">Tổng cọc: ${formatCurrency(totalDeposit)}</h4><h3 style="color:var(--primary); margin-top:5px;">Cần thanh toán: ${formatCurrency(totalRent + totalDeposit)}</h3><button class="btn-primary" style="margin-top:15px;" onclick="checkout()"><i class="fa fa-handshake"></i> Gửi Yêu Cầu Thuê</button></div>`;
+    container.innerHTML += `<div style="margin-top:20px;padding-top:20px;border-top:2px solid var(--glass-border);text-align:right;"><h4 style="color:var(--text-gray);">Tổng cọc: ${formatCurrency(totalDeposit)}</h4><h3 style="color:var(--primary); margin-top:5px;">Cần thanh toán: ${formatCurrency(totalRent + totalDeposit)}</h3><button class="btn-primary" style="margin-top:15px;" onclick="openPaymentModal()"><i class="fa fa-handshake"></i> Thanh Toán & Gửi Yêu Cầu</button></div>`;
 }
 
 function addToCart(id) {
@@ -310,35 +303,67 @@ function addToCart(id) {
 }
 function removeFromCart(i) { cart.splice(i, 1); document.getElementById('cart-count').textContent = cart.length; renderCart(); }
 
-function checkout() {
-    if (confirm(`Xác nhận gửi yêu cầu thuê các món đồ trong giỏ hàng?`)) {
-        let ordersBySeller = {};
-        cart.forEach(item => {
-            if(!ordersBySeller[item.sellerEmail]) ordersBySeller[item.sellerEmail] = [];
-            ordersBySeller[item.sellerEmail].push(item);
-        });
+function openPaymentModal() {
+    if (!currentUser) return showNotification('Bạn cần đăng nhập để thanh toán!', 'error');
+    if (cart.length === 0) return showNotification('Giỏ hàng của bạn đang trống!', 'error');
 
-        for (let seller in ordersBySeller) {
-            let items = ordersBySeller[seller];
-            let tRent = items.reduce((s, i) => s + i.rentPrice, 0);
-            let tDep = items.reduce((s, i) => s + i.deposit, 0);
-            
-            orders.push({
-                orderId: 'GD-' + (++orderIdCounter),
-                customerName: currentUser.name, customerEmail: currentUser.email,
-                sellerEmail: seller, 
-                items: items, totalRent: tRent, totalDeposit: tDep, 
-                commision: tRent * 0.1, 
-                status: 'Chờ Admin duyệt', 
-                isReviewed: false,
-                orderDateRaw: new Date().getTime(), date: new Date().toLocaleString('vi-VN')
-            });
-        }
-        database.ref('orders').set(orders);
-        showNotification('Đã gửi yêu cầu! Vui lòng chờ Admin xét duyệt.', 'success');
-        cart = []; document.getElementById('cart-count').textContent = 0; showSection('my-orders');
-    }
+    let totalRent = 0, totalDeposit = 0;
+    cart.forEach(item => { totalRent += item.rentPrice; totalDeposit += item.deposit; });
+    let totalToPay = totalRent + totalDeposit;
+
+    let payContent = `THUE ${currentUser.mssv || currentUser.phone}`;
+
+    document.getElementById('payment-amount').textContent = formatCurrency(totalToPay);
+    document.getElementById('payment-content').textContent = payContent;
+
+    const bankCode = "MB"; 
+    const bankAccount = "0123456789"; 
+    const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png?amount=${totalToPay}&addInfo=${encodeURIComponent(payContent)}&accountName=BQL%20KTX%20SHARE%20HUB`;
+    
+    document.getElementById('payment-qr-img').src = qrUrl;
+    document.getElementById('payment-modal').style.display = 'flex';
 }
+
+function closePaymentModal() {
+    document.getElementById('payment-modal').style.display = 'none';
+}
+
+function confirmPayment() {
+    let ordersBySeller = {};
+    cart.forEach(item => {
+        if(!ordersBySeller[item.sellerEmail]) ordersBySeller[item.sellerEmail] = [];
+        ordersBySeller[item.sellerEmail].push(item);
+    });
+
+    for (let seller in ordersBySeller) {
+        let items = ordersBySeller[seller];
+        let tRent = items.reduce((s, i) => s + i.rentPrice, 0);
+        let tDep = items.reduce((s, i) => s + i.deposit, 0);
+        
+        orders.push({
+            orderId: 'GD-' + (++orderIdCounter),
+            customerName: currentUser.name, customerEmail: currentUser.email,
+            sellerEmail: seller, 
+            items: items, totalRent: tRent, totalDeposit: tDep, 
+            commision: tRent * 0.1, 
+            status: 'Đã thanh toán - Chờ duyệt', 
+            isReviewed: false,
+            orderDateRaw: new Date().getTime(), date: new Date().toLocaleString('vi-VN')
+        });
+    }
+    
+    database.ref('orders').set(orders);
+    showNotification('Xác nhận thanh toán thành công! Vui lòng chờ Admin kiểm tra và duyệt đơn.', 'success');
+    
+    cart = []; 
+    document.getElementById('cart-count').textContent = 0; 
+    closePaymentModal();
+    showSection('my-orders');
+}
+
+function openSupportModal() { document.getElementById('support-modal').style.display = 'flex'; }
+function closeSupportModal() { document.getElementById('support-modal').style.display = 'none'; }
+
 
 /* ==================== 9. QUY TRÌNH LUÂN CHUYỂN ĐƠN HÀNG ==================== */
 window.updateOrderStatus = function(orderId, newStatus) {
@@ -357,7 +382,7 @@ function renderMyOrders() {
 
     container.innerHTML = myOrders.map(o => {
         let actionBtn = '';
-        if(o.status === 'Chờ Admin duyệt') actionBtn = '<button class="btn-nav" disabled>⏳ Đang chờ Admin duyệt đơn...</button>';
+        if(o.status === 'Chờ Admin duyệt' || o.status === 'Đã thanh toán - Chờ duyệt') actionBtn = '<button class="btn-nav" disabled>⏳ Đang chờ Admin duyệt đơn...</button>';
         else if(o.status === 'Đã duyệt - Chờ nhận đồ') actionBtn = `<button class="btn-primary" onclick="updateOrderStatus('${o.orderId}', 'Đang thuê')"><i class="fa fa-box-open"></i> Tôi Đã nhận đồ</button>`;
         else if(o.status === 'Đang thuê') actionBtn = `<button class="btn-primary" onclick="updateOrderStatus('${o.orderId}', 'Đã trả đồ - Chờ Admin chốt')"><i class="fa fa-undo"></i> Tôi Đã trả đồ</button>`;
         else if(o.status === 'Đã trả đồ - Chờ Admin chốt') actionBtn = '<button class="btn-nav" disabled>⏳ Chờ Admin chốt giao dịch...</button>';
@@ -410,7 +435,7 @@ function renderSellerDashboard() {
         if(incomingOrders.length === 0) oContainer.innerHTML = '<p style="color:var(--text-gray);">Chưa có ai thuê đồ của bạn.</p>';
         else oContainer.innerHTML = incomingOrders.map(o => {
             let actionBtn = '';
-            if(o.status === 'Chờ Admin duyệt') actionBtn = '<span style="color:var(--text-gray)"><i class="fa fa-clock"></i> Đang chờ Admin duyệt đơn...</span>';
+            if(o.status === 'Chờ Admin duyệt' || o.status === 'Đã thanh toán - Chờ duyệt') actionBtn = '<span style="color:var(--text-gray)"><i class="fa fa-clock"></i> Đang chờ Admin duyệt đơn...</span>';
             else if(o.status === 'Đã duyệt - Chờ nhận đồ') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-handshake"></i> Admin đã duyệt! Hãy giao đồ cho khách.</span>';
             else if(o.status === 'Đang thuê') actionBtn = '<span style="color:var(--primary)"><i class="fa fa-user-check"></i> Khách đang sử dụng đồ của bạn</span>';
             else if(o.status === 'Đã trả đồ - Chờ Admin chốt') actionBtn = '<span style="color:var(--secondary)"><i class="fa fa-box"></i> Khách báo đã trả đồ. Chờ Admin chốt sổ!</span>';
@@ -589,7 +614,7 @@ function renderOrderTable() {
     if (orders.length === 0) return tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có giao dịch</td></tr>';
     tbody.innerHTML = orders.sort((a,b)=>b.orderDateRaw-a.orderDateRaw).map(o => {
         let actionBtn = '';
-        if (o.status === 'Chờ Admin duyệt') {
+        if (o.status === 'Chờ Admin duyệt' || o.status === 'Đã thanh toán - Chờ duyệt') {
             actionBtn = `<button onclick="updateOrderStatus('${o.orderId}', 'Đã duyệt - Chờ nhận đồ')" style="background:var(--secondary);border:none;padding:6px 10px;border-radius:6px;color:white;cursor:pointer;margin-right:5px;" title="Duyệt đơn"><i class="fa fa-check"></i> Duyệt</button> <button onclick="updateOrderStatus('${o.orderId}', 'Đã hủy')" style="background:#ff4d4d;border:none;padding:6px 10px;border-radius:6px;color:white;cursor:pointer;" title="Từ chối"><i class="fa fa-times"></i> Hủy</button>`;
         } 
         else if (o.status === 'Đã trả đồ - Chờ Admin chốt') {
@@ -677,7 +702,7 @@ window.openProductDetailModal = function(id) {
 
 window.deleteProduct = function(id) {
     if(confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn bài đăng này không? Hành động này không thể hoàn tác!')) {
-        const isRenting = orders.some(o => o.items && o.items.some(item => item.id === id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt'].includes(o.status));
+        const isRenting = orders.some(o => o.items && o.items.some(item => item.id === id) && ['Đã duyệt - Chờ nhận đồ', 'Đang thuê', 'Đã trả đồ - Chờ Admin chốt', 'Đã thanh toán - Chờ duyệt'].includes(o.status));
         if (isRenting) return showNotification('KHÔNG THỂ XÓA! Món đồ này đang giao dịch thuê.', 'error');
 
         products = products.filter(p => p && p.id !== id);
@@ -701,4 +726,5 @@ window.onload = function() {
     }
 };
 
-window.handleLogin = handleLogin; window.handleSignUp = handleSignUp; window.handleAdminLogin = handleAdminLogin; window.switchTab = switchTab; window.showAdminForm = showAdminForm; window.backToUserLogin = backToUserLogin; window.showSection = showSection; window.addToCart = addToCart; window.removeFromCart = removeFromCart; window.searchProducts = searchProducts; window.filterCategory = filterCategory; window.handleLogout = handleLogout; window.switchAdminTab = switchAdminTab; window.checkout = checkout; window.goToLogin = goToLogin; window.openProductModal = openProductModal; window.closeProductModal = closeProductModal; window.handleSaveProduct = handleSaveProduct; window.openReviewModal = openReviewModal; window.submitReview = submitReview; window.toggleLock = toggleLock; window.previewImage = previewImage; window.openReportModal = openReportModal; window.submitReport = submitReport; window.resolveReport = resolveReport; window.renderReportTable = renderReportTable; window.exportRevenueReport = exportRevenueReport; window.toggleNotify = toggleNotify;
+window.handleLogin = handleLogin; window.handleSignUp = handleSignUp; window.handleAdminLogin = handleAdminLogin; window.switchTab = switchTab; window.showAdminForm = showAdminForm; window.backToUserLogin = backToUserLogin; window.showSection = showSection; window.addToCart = addToCart; window.removeFromCart = removeFromCart; window.searchProducts = searchProducts; window.filterCategory = filterCategory; window.handleLogout = handleLogout; window.switchAdminTab = switchAdminTab; window.goToLogin = goToLogin; window.openProductModal = openProductModal; window.closeProductModal = closeProductModal; window.handleSaveProduct = handleSaveProduct; window.openReviewModal = openReviewModal; window.submitReview = submitReview; window.toggleLock = toggleLock; window.previewImage = previewImage; window.openReportModal = openReportModal; window.submitReport = submitReport; window.resolveReport = resolveReport; window.renderReportTable = renderReportTable; window.exportRevenueReport = exportRevenueReport; window.toggleNotify = toggleNotify;
+window.openPaymentModal = openPaymentModal; window.closePaymentModal = closePaymentModal; window.confirmPayment = confirmPayment; window.openSupportModal = openSupportModal; window.closeSupportModal = closeSupportModal;

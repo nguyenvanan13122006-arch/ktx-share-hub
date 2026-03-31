@@ -26,7 +26,7 @@
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="input-group">
                     <i class="fa fa-user"></i>
-                    <input type="text" id="login-email" placeholder="Email (@dau.edu.vn) hoặc SĐT" required>
+                    <input type="text" id="login-email" placeholder="Email (.edu.vn) hoặc SĐT" required>
                 </div>
                 <div class="input-group">
                     <i class="fa fa-lock"></i>
@@ -40,7 +40,7 @@
                 <div class="input-group"><i class="fa fa-id-card"></i><input type="text" id="reg-mssv" placeholder="Mã số sinh viên" required></div>
                 <div class="input-group"><i class="fa fa-phone"></i><input type="text" id="reg-phone" placeholder="Số điện thoại (10 số)" required pattern="[0-9]{10}" maxlength="10"></div>
                 <div class="input-group"><i class="fa fa-door-open"></i><input type="text" id="reg-room" placeholder="Phòng KTX (VD: I1-102)" required></div>
-                <div class="input-group"><i class="fa fa-envelope"></i><input type="email" id="reg-email" placeholder="Email sinh viên (@dau.edu.vn)" required></div>
+                <input type="email" id="reg-email" placeholder="Email sinh viên (đuôi .edu.vn)" required>
                 <div class="input-group"><i class="fa fa-lock"></i><input type="password" id="reg-pass" placeholder="Mật khẩu" required minlength="6"></div>
                 <button type="submit" class="btn-primary-long"><i class="fa fa-check-circle"></i> Đăng ký tài khoản</button>
             </form>
@@ -316,6 +316,49 @@
                 <button type="submit" class="btn-primary-long" style="background:#ff4d4d;">Gửi Báo Cáo Cho Admin</button>
                 <p class="back-link" onclick="document.getElementById('report-modal').style.display='none'">Hủy bỏ</p>
             </form>
+        </div>
+    </div>
+
+    <button class="floating-support-btn" onclick="openSupportModal()">
+        <i class="fa fa-headset"></i>
+    </button>
+
+    <div id="support-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="color:var(--primary); margin:0;"><i class="fa fa-headset"></i> LIÊN HỆ HỖ TRỢ</h3>
+                <button onclick="closeSupportModal()" style="background:none; border:none; color:var(--text-gray); font-size:1.2rem; cursor:pointer;"><i class="fa fa-times"></i></button>
+            </div>
+            <div style="text-align: left; line-height: 1.8; color: var(--text-white); background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                <p><i class="fa fa-phone-alt" style="color:var(--secondary); width:25px;"></i> <b>Hotline/Zalo:</b> <span style="color:white;">0987.654.321 (Admin)</span></p>
+                <p><i class="fa fa-envelope" style="color:var(--secondary); width:25px;"></i> <b>Email:</b> <span style="color:white;">hotro@ktxsharehub.vn</span></p>
+                <p><i class="fab fa-facebook" style="color:#1877f2; width:25px;"></i> <b>Fanpage:</b> <a href="#" style="color:#3b82f6; text-decoration:none;">Cộng Đồng KTX Share Hub</a></p>
+                <p><i class="fa fa-map-marker-alt" style="color:#ef4444; width:25px;"></i> <b>Văn phòng:</b> <span style="color:white;">Phòng BQL KTX, Tầng 1 Tòa nhà Trung Tâm</span></p>
+            </div>
+            <button class="btn-primary-long" style="margin-top: 20px;" onclick="closeSupportModal()">Đóng</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="modal-overlay" style="display:none;">
+        <div class="auth-box" style="max-width: 420px; text-align: center;">
+            <h3 style="color:var(--primary); margin-bottom: 10px;"><i class="fa fa-qrcode"></i> CHUYỂN KHOẢN TIỀN CỌC</h3>
+            <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">Quét mã QR bằng app ngân hàng hoặc chuyển khoản thủ công bên dưới.</p>
+            
+            <div style="background: white; padding: 15px; border-radius: 16px; display: inline-block; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                <img id="payment-qr-img" src="" alt="Mã QR Thanh Toán" style="width: 200px; height: 200px; border-radius: 8px; object-fit: contain;">
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; font-size: 0.95rem; border: 1px solid var(--glass-border);">
+                <p style="margin-bottom: 10px; display: flex; justify-content: space-between;"><b style="color: var(--text-gray);">Ngân hàng:</b> <span style="color: white; font-weight: bold;">MB Bank</span></p>
+                <p style="margin-bottom: 10px; display: flex; justify-content: space-between;"><b style="color: var(--text-gray);">Chủ tài khoản:</b> <span style="color: white; font-weight: bold;">BQL KTX SHARE HUB</span></p>
+                <p style="margin-bottom: 10px; display: flex; justify-content: space-between;"><b style="color: var(--text-gray);">Số tài khoản:</b> <span style="color: var(--primary); font-weight: bold; font-size: 1.1rem; cursor: pointer;" title="Nhấn để copy">0123456789 <i class="fa fa-copy" style="font-size:0.8rem;"></i></span></p>
+                <hr style="border-color: rgba(255,255,255,0.05); margin: 12px 0;">
+                <p style="margin-bottom: 10px; display: flex; justify-content: space-between;"><b style="color: var(--text-gray);">Nội dung:</b> <span id="payment-content" style="color: var(--secondary); font-weight: bold; text-align: right;">THUE KTX</span></p>
+                <p style="display: flex; justify-content: space-between; align-items: center;"><b style="color: var(--text-gray);">Số tiền:</b> <span id="payment-amount" style="color: var(--primary); font-size: 1.3rem; font-weight: 900;">0đ</span></p>
+            </div>
+
+            <button class="btn-primary-long" onclick="confirmPayment()"><i class="fa fa-check-circle"></i> TÔI ĐÃ CHUYỂN KHOẢN</button>
+            <p class="back-link" onclick="closePaymentModal()"><i class="fa fa-arrow-left"></i> Quay lại giỏ hàng</p>
         </div>
     </div>
 
